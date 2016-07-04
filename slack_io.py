@@ -1,12 +1,16 @@
 #listen to slack
 from slackclient import SlackClient
 
+with open('../token.txt', 'r') as token_file:
+    read_data = token_file.read()
+token_file.closed
+
 ##### DECLARATIONS #####
 
 global sc
 global chan
 
-token = "xoxb-36774633444-7WG8kaLpG23HeRcLjrix7RA4"# found at https://api.slack.com/web#authentication
+token = read_data # found at https://api.slack.com/web#authentication
 sc = SlackClient(token)
 
 chan = "C06PTC83B" #LIVE OUTPUT
