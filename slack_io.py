@@ -1,23 +1,23 @@
 #listen to slack
 from slackclient import SlackClient
+import sys
+sys.path.append('/Users/sanvidpro/Desktop/sandwichvideo')
+import sandwich
 
-with open('../token.txt', 'r') as token_file:
-    read_data = token_file.read()
-token_file.closed
+
+authy = sandwich.get_auth('/Volumes/Sandwich/assets/python/auth.csv')
+token = authy['slack']['token']
+
 
 ##### DECLARATIONS #####
 
 global sc
 global chan
 
-token = read_data
+
 sc = SlackClient(token)
 
 chan = "C06PTC83B" #LIVE OUTPUT
-app_key = 'lry3zo9bnw0539y'
-app_secret = '5292p7am7dnpdfq'
-access_token = 'rnDrBIxEFbAAAAAAAAAH'
-
 
 def send_to_slack(slackput):
     try:
