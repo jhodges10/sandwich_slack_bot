@@ -40,9 +40,9 @@ src = ''
 #Define SLACKBOT token and Dropbox API
 token = "xoxb-36774633444-7WG8kaLpG23HeRcLjrix7RA4"# found at https://api.slack.com/web#authentication
 sc = SlackClient(token)
-app_key = 'lry3zo9bnw0539y'
-app_secret = '5292p7am7dnpdfq'
-access_token = 'rnDrBIxEFbAAAAAAAAAHyq0szU5y4T1OOs92LtfErjSL25LpZia6lRmE5vJ6P8MW'
+app_key = 'xxxxx'
+app_secret = 'xxxxx'
+access_token = 'xxxxx'
 dropbox_client = dropbox.client.DropboxClient(access_token)
 
 
