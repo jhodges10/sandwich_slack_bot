@@ -10,11 +10,11 @@ token_file.closed
 global sc
 global chan
 
-token = read_data # found at https://api.slack.com/web#authentication
+token = read_data
 sc = SlackClient(token)
 
 chan = "C06PTC83B" #LIVE OUTPUT
-pp_key = 'lry3zo9bnw0539y'
+app_key = 'lry3zo9bnw0539y'
 app_secret = '5292p7am7dnpdfq'
 access_token = 'rnDrBIxEFbAAAAAAAAAH'
 
@@ -23,7 +23,7 @@ def send_to_slack(slackput):
     try:
         sc.rtm_send_message(chan,slackput)
     except:
-        print "Something happened while attempting to send to slack"
+        print "Something happened while attempting to send your message to slack"
 
 def listen():
     evt = ''
