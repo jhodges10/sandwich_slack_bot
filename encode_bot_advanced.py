@@ -14,13 +14,11 @@ class User:
 
 
 command = ["python", "slack_io.py"]
-proc = subprocess.Popen(command, stdout=subprocess.PIPE)
+proc = subprocess.Popen(command, stdin=PIPE, stdout=PIPE)
 
 while True:
-	next_line = proc.stdout.readline()
-	#asprint next_line.rstrip()
-
-global new_message
+    next_line = proc.communicate()[0]
+    #print next_line
 
 '''
 while True:
