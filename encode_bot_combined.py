@@ -1,10 +1,18 @@
 from slackclient import SlackClient
 import threading, subprocess, time, Queue, sys, random
-sys.path.append('/Users/sanvidpro/Desktop/sandwichvideo')
+sys.path.append('C:\Users\jeffh\Documents\GitHub\sandwichvideo')
 import sandwich
+import csv
+with open('../')
 
-authy = sandwich.get_auth('/Volumes/Sandwich/assets/python/auth.csv')
-token = authy['slack']['token']
+'''read token separately so you don't piss off slack'''
+with open('../token.txt', 'r') as token_file:
+    token_data = token_file.read()
+token_file.close
+'''We've now read in the token file and have it closed. We reference that by reading token_data'''
+
+token = token_data
+
 sc = SlackClient(token)
 #chan = 'C06PTC83B' #LIVE OUTPUT
 chan = 'C12PL8TSS' #TEMP SLACK
@@ -30,13 +38,16 @@ class User:
 	def print_user_info(self):
 		print 'Name: ', self.display_name, ', UUID: ', self.UUID
 
+    def user_is_new(self):
+
+
 def send_to_slack(slackput):
     try:
         sc.rtm_send_message(chan,slackput)
     except:
         print 'Something happened while attempting to send your message to slack'
 
-def listen_to_slack():
+def slack_RTM_connection():
     evt = ''
     message = ''
     for attempt in range(100):
@@ -51,24 +62,21 @@ def listen_to_slack():
                                 person = evt['user']
                                 output_command = [person,message]
                                 message_queue.put(output_command)
-                                time.sleep(1)
+                                time.sleep(.5)
             else:
                 print 'Unable to connect to Slack right now'
         except:
             print 'You caused a much larger problem than you probably realize.'
 
 def listener():
-    listener = threading.Thread(target=listen_to_slack)
+    listener = threading.Thread(target=slack_RTM_connection)
     listener.daemon = True
     listener.start()
 
-
-def check_message_type(cur_message):
-    if 'cuts' in cur_message and 'scenes' not in cur_message:
-        return 0
-    elif '/Volumes/' in cur_message:
+def check_message_type(cur_message): # Method to test type of cut
+    if '/Volumes/' in cur_message:
         return 1
-    elif 'lunch' or 'food' in cur_message:
+    elif 'lunch' or 'food' or 'hungry' in cur_message:
         return 2
     else:
         return 3
@@ -77,15 +85,49 @@ def lunch_answer():
     lunch_message = 'You should have ' +str(lunch_options[random.randint(0,9)]) + ' for lunch.'
     send_to_slack(lunch_message)
 
+def video_handler_type(cur_message):
+    if '.mov' in cur_message:
+        if 'cuts' in cur_message and 'scenes' not in cur_message:
+            print 'This is a cut'
+            return 'cut'
+        elif 'ae' in cur_message:
+            return 'scene'
+        elif 'scenes' in cur_message:
+            return 'scene'
+        else:
+            send_to_slack("More than likely, you just added a local file that the server doesn't recognize.")
+    else:
+        send_to_slack("This isn't a video file.")
+        return False
+
 def conversation():
+    cur_message = message_queue.get() # Check the cue for the message, only called if the queue has an item in it
+    print 'This is the UUID for the person who sent that message: ' +cur_message[0]
+    print 'This is what they said:' +cur_message[1]
+    if 'U12NSJMD2' not in cur_message[0]: # This filters out messages from the slackbot itself
+        if check_message_type(cur_message[1]) == 1: # If the message contains a path to the server, then check what kind it is
+            if video_handler_type(cur_message) is =='cut':
+                #print znxcv,zxncv
+            elif video_handler_type(cur_message) is == 'scene:
+                #print aksjdflkjz
+      
+        elif check_message_type(cur_message[1]) == 2: # Call the lunch method if the current message contains something related to lunch or food
+            lunch_answer()
+        else:
+
+    else:
+        print 'Unknown message type or it handled the bug where the Slack RTM conneciton just started by loading the last message sent.'
+        return
+
+'''Calls the listen function which spawns the second thread. It continually checks to see if
+    the message queue is empty and if not (meaning it contains something) it triggers the conversation method 
+    which in turns checks what kind of message that is before then acting upon it.'''
+
+def controller():
     listener()
     while True:
-        cur_message = message_queue.get()
-        time.sleep(1)
-        print cur_message
-        if check_message_type(cur_message[1]) <= 1:
-            print 'This is either a cut or a scene.'
-        elif check_message_type(cur_message[1]) == 2:
-            lunch_answer()
+        if message_queue.empty() is False:
+            conversation()
+            print "Successfully called the conversation method"
             
-conversation()
+controller()
