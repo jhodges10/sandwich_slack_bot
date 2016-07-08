@@ -1,9 +1,8 @@
 from slackclient import SlackClient
 import threading, subprocess, time, Queue, sys, random
 sys.path.append('C:\Users\jeffh\Documents\GitHub\sandwichvideo')
-import sandwich
+#import sandwich
 import csv
-with open('../')
 
 '''read token separately so you don't piss off slack'''
 with open('../token.txt', 'r') as token_file:
@@ -39,7 +38,7 @@ class User:
 		print 'Name: ', self.display_name, ', UUID: ', self.UUID
 
     def user_is_new(self):
-
+        print 'test'
 
 def send_to_slack(slackput):
     try:
@@ -106,15 +105,13 @@ def conversation():
     print 'This is what they said:' +cur_message[1]
     if 'U12NSJMD2' not in cur_message[0]: # This filters out messages from the slackbot itself
         if check_message_type(cur_message[1]) == 1: # If the message contains a path to the server, then check what kind it is
-            if video_handler_type(cur_message) is =='cut':
-                #print znxcv,zxncv
-            elif video_handler_type(cur_message) is == 'scene:
-                #print aksjdflkjz
+            if 'cut' in video_handler_type(cur_message):
+                print 'This is definitely a cut.'
+            elif 'scene' in video_handler_type(cur_message):
+                print 'This is definitely a scene.'
       
         elif check_message_type(cur_message[1]) == 2: # Call the lunch method if the current message contains something related to lunch or food
             lunch_answer()
-        else:
-
     else:
         print 'Unknown message type or it handled the bug where the Slack RTM conneciton just started by loading the last message sent.'
         return
