@@ -2,6 +2,7 @@ from slackclient import SlackClient
 import threading, subprocess, time, Queue, sys, random
 sys.path.append('/Users/sanvidpro/Desktop/sandwichvideo')
 import sandwich
+import csv
 
 authy = sandwich.get_auth('/Volumes/Sandwich/assets/python/auth.csv')
 token = authy['slack']['token']
@@ -12,12 +13,17 @@ chan = 'C12PL8TSS' #TEMP SLACK
 message_queue = Queue.Queue()
 lunch_options = ['Fritzi','Grow','Edibol','Cafe Gratitude','Pie Hole','Wurstkurch','Cerveteca','Americano','Umami','Groundwork',]
 
+#with open('users.csv', 'rb') as user_file:
+    
 
 class User:
     def __init__(self, UUID, recent_message, display_name, clip_pref):
         self.UUID = UUID
         self.recent_message = recent_message
         self.clip_pref = clip_pref
+        self.display_name = display_name
+        
+    def check_user_display_name():
         try:
             user_info = sc.api_call('users.info', user=UUID)
             fn = user_info['first_name']
@@ -25,7 +31,7 @@ class User:
             full_name = fn + ' ' + ln
         except:
             full_name = 'encoder'
-        self.display_name = full_name
+        return self.display_name = full_name
         
 	def print_user_info(self):
 		print 'Name: ', self.display_name, ', UUID: ', self.UUID
