@@ -3,20 +3,31 @@ from fuzzywuzzy import fuzz,process
 import threading, subprocess, time, Queue, sys, random, csv, dropbox, os
 sys.path.append('/Users/sanvidpro/Desktop/sandwichvideo')
 import sandwich
-from watchdog.observers import Observer # Install with pip, if it fails the you must run 'xcode-select --install' from terminal to install xcode command line tools
-from watchdog.events import PatternMatchingEventHandler # Documentation here https://pythonhosted.org/watchdog/api.html
+from watchdog.observers import Observer # Install with pip, if it fails then you must run 'xcode-select --install' from terminal to install xcode command line tools
+from watchdog.events import PatternMatchingEventHandler # Documentation here https://pythonhosted.org/watchdog/api.html http://brunorocha.org/python/watching-a-directory-for-file-changes-with-python.html
 
-authy = sandwich.get_auth('/Volumes/Sandwich/assets/python/auth.csv')
-token = authy['slack_testing']['token']
-sc = SlackClient(token)
 #chan = 'C06PTC83B' #LIVE OUTPUT
 chan = 'C12PL8TSS' #TEMP SLACK
 
+# Import API keys 
+authy = sandwich.get_auth('/Volumes/Sandwich/assets/python/auth.csv')
+
+token = authy['slack_testing']['token'] #Usage of testing Slack token to only operate in the #testing_encoder channel
+app_key = authy['dropbox']['app_key']
+app_secret = authy['dropbox']['app_secret']
+access_token = authy['dropbox']['access_token']
+dropbox_client = dropbox.client.DropboxClient(access_token)
+sc = SlackClient(token)
+
 message_queue = Queue.Queue()
+encode_queue = Queue.Queue()
 lunch_options = ['Fritzi','Grow','Edibol','Cafe Gratitude','Pie Hole','Wurstkurch','Cerveteca','Americano','Umami','Groundwork',]
 server_directory = '/Volumes/Sandwich/projects/'
 dropbox_path = '/Users/sanvidpro/Dropbox/'
 
+busy = 0
+
+# FFMPEG Setup
 CRF_VALUE = '19' # controls the quality of the encode
 PROFILE = 'high422' # h.264 profile
 PRESET = 'fast' # encoding speed:compression ratio
@@ -26,10 +37,6 @@ THREADS = '8' # of threads to use
 SCALER_540 = "scale=-1:540, scale=trunc(iw/2)*2:540" # 540 Scale settings
 SCALER_1080 = "scale=-1:1080, scale=trunc(iw/2)*2:1080" # 1080 Scale settings
 
-app_key = authy['dropbox']['app_key']
-app_secret = authy['dropbox']['app_secret']
-access_token = authy['dropbox']['access_token']
-dropbox_client = dropbox.client.DropboxClient(access_token)
 
 #with open('users.csv', 'rb') as user_file:
 
@@ -104,12 +111,22 @@ def trim(src):
 def encode_1080(video,fn,db_dir):
     output = dropbox_path + str(db_dir) +'/cuts/' + fn + "-1080.mov"
     print output
+    global busy
     try:
-        subprocess.call([FFMPEG_PATH, '-i', video, '-c:v', 'libx264', '-tune', TUNE, '-pix_fmt', 'yuv420p', '-preset', PRESET, '-profile:v', PROFILE, '-vf', SCALER_1080, '-crf', CRF_VALUE, '-c:a', 'libfdk_aac', '-b:a', '192k', '-threads', THREADS, output])
+        subprocess.Popen([FFMPEG_PATH, '-i', video, '-c:v', 'libx264', '-tune', TUNE, '-pix_fmt', 'yuv420p', '-preset', PRESET, '-profile:v', PROFILE, '-vf', SCALER_1080, '-crf', CRF_VALUE, '-c:a', 'libfdk_aac', '-b:a', '192k', '-threads', THREADS, output])
         return output
+        busy = 0
+        return busy
     except:
         print "That directory didn't exist or something else happened"
         
+def wait_to_encode():
+    video_to_encode = encode_queue.get()    
+    busy = 1
+    encode = threading.Thread(target=encode_1080(video_to_encode[0],video_to_encode[1],video_to_encode[2]))
+    encode.daemon = True
+    encode.start()
+
 def send_to_slack(slackput):
     try:
         sc.rtm_send_message(chan,slackput)
@@ -175,24 +192,22 @@ def video_handler_type(cur_message):
         send_to_slack("This isn't a video file.")
         return False
 
-def conversation():
+def conversation_handler():
     cur_message = message_queue.get() # Check the cue for the message, only called if the queue has an item in it
     print 'This is the UUID for the person who sent that message: ' +cur_message[0]
     print 'This is what they said:' +cur_message[1]
-    if 'U12NSJMD2' not in cur_message[0]: # This filters out messages from the slackbot itself
+    if 'U1QPD8F5L' not in cur_message[0]: # This filters out messages from the slackbot itself
         if check_message_type(cur_message[1]) == 1: # If the message contains a path to the server, then check what kind it is
             if video_handler_type(cur_message) == 1:
                 print 'This is definitely a cut.'
                 project,fn = file_finder(cur_message[1])
                 try:
-                    send_to_slack('Encoding that cut for ' +project)
+                    send_to_slack('Added the cut for ' +project + ' to the encoding queue')
                     print "This is the source file: " +cur_message[1]
                     print "This is the trimmed filename: " +trim(fn)
                     print "This is the project name: " +project
                     print "This is the dropbox folder it will go into: " +fuzzy_dropbox(project)
-                    encode = threading.Thread(target=encode_1080(cur_message[1],trim(fn),fuzzy_dropbox(project)))
-                    encode.daemon = True
-                    encode.start()
+                    encode_queue.put([cur_message[1],trim(fn),fuzzy_dropbox(project)])
                     
                 except:
                     print 'Ran into some issues encoding your file.'
@@ -204,7 +219,8 @@ def conversation():
             lunch_answer()
             
         elif check_message_type(cur_message[1]) == 3: # Call the directory watchdog to keep an eye on any outcoming shots
-            project = 'Density'
+            project = 'Upthere'
+            send_to_slack('Now watching the shots folder for ' +project)
             directory_watchdog(server_directory+project)
         elif check_message_type(cur_message[1]) == 4:
             #send_to_slack("I can't handle this type of input yet")
@@ -222,7 +238,10 @@ def controller():
     listener()
     while True:
         if message_queue.empty() is False:
-            conversation()
+            conversation_handler()
         time.sleep(1)
+        if encode_queue.empty() is False:
+            if busy == 0:
+                wait_to_encode()
             
 controller()
